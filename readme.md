@@ -11,11 +11,10 @@ In this case configuration file may look like this:
     cwd: __dirname,
     bundles: {
         'dist/common.js': '__common_bundle',
-        'dist/app.js': ['src/app/index.js'],
-        'dist/help.js': ['src/help/index.js'],
-        'dist/data.js': ['src/heavydata1.js', 'src/heavydata2.js']
+        'dist/app.js': 'src/app/index.js',
+        'dist/help.js': 'src/help/index.js'
     }
 }
 ```
 
-Each key in bundles hash represents a separate output bundle. Key with special value `__common_bundle` corresponds bundle containing common libraries.
+Each key in bundles hash represents a separate output bundle, value is the source file. Key with special value `__common_bundle` corresponds bundle containing common libraries.

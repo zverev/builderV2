@@ -1,6 +1,7 @@
 'use strict';
 
 var vinylSourceStream = require('vinyl-source-stream');
+var factorBundle = require('factor-bundle')
 var browserify = require('browserify');
 var parcelMap = require('parcel-map');
 var exorcist = require('exorcist');
@@ -16,13 +17,62 @@ var gulpRename = require('gulp-rename');
 var gulpConcat = require('gulp-concat');
 var gulp = require('gulp');
 
-function browserifyFactory(config) {
-    var br = browserify({
-        entries: config.entries,
-        debug: true
+function parseConfig(config) {
+    var srcs = [];
+    var dists = [];
+    var commonBundle = 'dist/common.js';
+
+    _.forOwn(config.bundles, function (value, key) {
+        if (value === '__common_bundle') {
+            commonBundle = key;
+            return;
+        }
+        srcs.push(value);
+        dists.push(key);
     });
 
+    return {
+        srcs: srcs,
+        dists: dists,
+        commonBundle: commonBundle,
+        debug: true
+    }
+}
+
+function browserifyFactory(config) {
+    var cfg = parseConfig(config);
+
+    return browserify({
+        entries: cfg.srcs,
+        debug: cfg.debug
+    });
+}
+
+function browserifyWatch(config) {
+    var cfg = parseConfig(config);
+    var br = watchify(browserifyFactory(config));
+
+    br.plugin(factorBundle, {
+        outputs: cfg.dists
+    });
+
+    br.on('update', bundle); // on any dep update, runs the bundler
+    br.on('log', gutil.log); // output build logs to terminal
+
+    bundle();
+
     return br;
+
+    function bundle() {
+        return br.bundle()
+            .on('error', function(error) {
+                debugger;
+                gutil.log('error', error.text)
+            })
+            .pipe(exorcist(cfg.commonBundle + '.map'))
+            .pipe(vinylSourceStream(path.basename(cfg.commonBundle)))
+            .pipe(gulp.dest(path.dirname(cfg.commonBundle)));
+    }
 }
 
 function getCssAssets(brInstance, cb) {
@@ -51,26 +101,7 @@ function getCssAssets(brInstance, cb) {
 // options.entries - browserify files
 module.exports = function(gulp, options) {
     gulp.task('watchjs', function() {
-        var b = watchify(browserifyFactory(options));
-
-        // add transformations here
-        // i.e. b.transform(coffeeify);
-
-        function bundle() {
-            return b.bundle()
-                // log errors if they happen
-                .on('error', function() {
-                    gutil.log('error')
-                })
-                .pipe(exorcist('./dist/bundle.js.map'))
-                .pipe(vinylSourceStream('bundle.js'))
-                .pipe(gulp.dest('./dist'));
-        }
-
-        b.on('update', bundle); // on any dep update, runs the bundler
-        b.on('log', gutil.log); // output build logs to terminal
-
-        bundle();
+        browserifyWatch(options);
     });
 
     gulp.task('css', function(cb) {
@@ -122,5 +153,5 @@ module.exports = function(gulp, options) {
         });
     });
 
-    gulp.task('default', ['watchjs', 'watchcss']);
+    gulp.task('default', ['watchjs']);
 }
