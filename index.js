@@ -22,7 +22,7 @@ function parseConfig(config) {
     var dists = [];
     var commonBundle = 'dist/common.js';
 
-    _.forOwn(config.bundles, function (value, key) {
+    _.forOwn(config.bundles, function(value, key) {
         if (value === '__common_bundle') {
             commonBundle = key;
             return;
@@ -32,6 +32,7 @@ function parseConfig(config) {
     });
 
     return {
+        cwd: config.cwd,
         srcs: srcs,
         dists: dists,
         commonBundle: commonBundle,
@@ -100,50 +101,61 @@ function getCssAssets(brInstance, cb) {
 
 // options.entries - browserify files
 module.exports = function(gulp, options) {
+    var cfg = parseConfig(options);
+
     gulp.task('watchjs', function() {
         browserifyWatch(options);
     });
 
     gulp.task('css', function(cb) {
-        getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
-            var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
-                return gulp.src(cssFilePath)
-                    .pipe(gulpFileAssets({
-                        types: {
-                            js: ['js'],
-                            css: ['css'],
-                            page: ['html', 'tpl'],
-                            img: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'],
-                            fonts: ['eot', 'woff', 'ttf']
-                        }
-                    }))
-                    .pipe(gulpRename(function(pth) {
-                        pth.dirname = path.relative(
-                            options.cwd,
-                            path.join(path.dirname(cssFilePath), pth.dirname)
-                        );
-                    }))
-                    .pipe(gulp.dest('dist'));
+        return Promise.all(cfg.srcs.map(function(src, i) {
+            return new Promise(function(resolve, reject) {
+                debugger;
+                var srcFullPath = path.join(cfg.cwd, cfg.srcs[i]);
+                var distFullPath = path.join(cfg.cwd, cfg.dists[i]);
+                getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
+                    var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
+                        return gulp.src(cssFilePath)
+                            .pipe(gulpFileAssets({
+                                types: {
+                                    js: ['js'],
+                                    css: ['css'],
+                                    page: ['html', 'tpl'],
+                                    img: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'],
+                                    fonts: ['eot', 'woff', 'ttf']
+                                }
+                            }))
+                            .pipe(gulpRename(function(pth) {
+                                pth.dirname = path.relative(
+                                    options.cwd,
+                                    path.join(path.dirname(cssFilePath), pth.dirname)
+                                );
+                            }))
+                            .pipe(gulp.dest(path.dirname(distFullPath)));
+                    });
+
+                    var cssStreams = cssFilesPaths.map(function(cssFilePath) {
+                        return gulp.src(cssFilePath)
+                            .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1, offset, str) {
+                                var pth = path.relative(
+                                    options.cwd,
+                                    path.join(path.dirname(cssFilePath), p1)
+                                );
+                                return 'url(\'' + pth.replace(/\\/ig, '/') + '\')';
+                            }))
+                    });
+
+                    var cssStream = es.merge.apply(null, cssStreams)
+                        .pipe(gulpConcat(path.basename(distFullPath, path.extname(distFullPath)) + '.css'))
+                        .pipe(gulp.dest(path.dirname(distFullPath)));
+
+                    es.merge.apply(null, [].concat(urlsStreams, cssStream))
+                        .pipe(es.through(null, function () {
+                            resolve();
+                        }));
+                });
             });
-
-            var cssStreams = cssFilesPaths.map(function(cssFilePath) {
-                return gulp.src(cssFilePath)
-                    .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1, offset, str) {
-                        var pth = path.relative(
-                            options.cwd,
-                            path.join(path.dirname(cssFilePath), p1)
-                        );
-                        return 'url(\'' + pth.replace(/\\/ig, '/') + '\')';
-                    }))
-            });
-
-            var cssStream = es.merge.apply(null, cssStreams)
-                .pipe(gulpConcat('bundle.css'))
-                .pipe(gulp.dest('dist'));
-
-            es.merge.apply(null, [].concat(urlsStreams, cssStream))
-                .pipe(es.through(null, cb));
-        });
+        }));
     });
 
     gulp.task('watchcss', ['css'], function(cb) {
@@ -153,5 +165,5 @@ module.exports = function(gulp, options) {
         });
     });
 
-    gulp.task('default', ['watchjs']);
+    gulp.task('default', ['watchjs', 'watchcss']);
 }
