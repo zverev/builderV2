@@ -37,7 +37,7 @@ function parseConfig(config) {
         srcs: srcs,
         dists: dists,
         commonBundle: commonBundle,
-        debug: true
+        debug: !!config.debug 
     }
 }
 
