@@ -9,6 +9,7 @@ var watchify = require('watchify');
 var gutil = require('gulp-util');
 var path = require('path');
 var es = require('event-stream');
+var fs = require('fs');
 var _ = require('lodash');
 
 var gulpFileAssets = require('gulp-file-assets');
@@ -99,18 +100,46 @@ function getCssAssets(brInstance, cb) {
     brInstance.bundle();
 }
 
+function createDistDirs(cfg) {
+    return Promise.all(cfg.dists.map(function(pth) {
+        return new Promise(function(resolve, reject) {
+            var dirPath = path.dirname(pth);
+            fs.stat(dirPath, function (err, stat) {
+                if (err && err.code === 'ENOENT') {
+                    makeDir()
+                } else {
+                    if (stat.isDirectory()) {
+                        resolve();
+                    } else {
+                        makeDir();
+                    }
+                }
+
+                function makeDir() {
+                    fs.mkdir(dirPath, function (err) {
+                        err ? reject() : resolve();
+                    })
+                }
+            })
+        })
+    }));
+}
+
 // options.entries - browserify files
 module.exports = function(gulp, options) {
     var cfg = parseConfig(options);
 
     gulp.task('watchjs', function() {
-        browserifyWatch(options);
+        return createDistDirs(cfg).then(function () {
+            browserifyWatch(options);
+        }, function () {
+            gutil.log('error creating dist dirs');
+        })
     });
 
     gulp.task('css', function(cb) {
         return Promise.all(cfg.srcs.map(function(src, i) {
             return new Promise(function(resolve, reject) {
-                debugger;
                 var srcFullPath = path.join(cfg.cwd, cfg.srcs[i]);
                 var distFullPath = path.join(cfg.cwd, cfg.dists[i]);
 
@@ -119,7 +148,7 @@ module.exports = function(gulp, options) {
                         resolve();
                         return;
                     }
-                    
+                        debugger;
                     var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpFileAssets({
@@ -142,7 +171,8 @@ module.exports = function(gulp, options) {
 
                     var cssStreams = cssFilesPaths.map(function(cssFilePath) {
                         return gulp.src(cssFilePath)
-                            .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1, offset, str) {
+                            .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1,
+                                offset, str) {
                                 var pth = path.relative(
                                     options.cwd,
                                     path.join(path.dirname(cssFilePath), p1)
@@ -156,7 +186,7 @@ module.exports = function(gulp, options) {
                         .pipe(gulp.dest(path.dirname(distFullPath)));
 
                     es.merge.apply(null, [].concat(urlsStreams, cssStream))
-                        .pipe(es.through(null, function () {
+                        .pipe(es.through(null, function() {
                             resolve();
                         }));
                 });
