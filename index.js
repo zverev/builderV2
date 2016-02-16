@@ -113,7 +113,13 @@ module.exports = function(gulp, options) {
                 debugger;
                 var srcFullPath = path.join(cfg.cwd, cfg.srcs[i]);
                 var distFullPath = path.join(cfg.cwd, cfg.dists[i]);
+
                 getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
+                    if (_.isEmpty(cssFilesPaths)) {
+                        resolve();
+                        return;
+                    }
+                    
                     var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpFileAssets({
