@@ -18,6 +18,8 @@ var gulpRename = require('gulp-rename');
 var gulpConcat = require('gulp-concat');
 var gulp = require('gulp');
 
+var dedupePlugin = require('./dedupePlugin.js');
+
 function parseConfig(config) {
     var srcs = [];
     var dists = [];
@@ -37,7 +39,7 @@ function parseConfig(config) {
         srcs: srcs,
         dists: dists,
         commonBundle: commonBundle,
-        debug: !!config.debug 
+        debug: !!config.debug
     }
 }
 
@@ -56,6 +58,10 @@ function browserifyWatch(config) {
 
     br.plugin(factorBundle, {
         outputs: cfg.dists
+    });
+
+    br.plugin(dedupePlugin, {
+        foo: 'bar'
     });
 
     br.on('update', bundle); // on any dep update, runs the bundler
