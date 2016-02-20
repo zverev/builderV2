@@ -112,7 +112,7 @@ function createDistDirs(cfg) {
     return Promise.all(cfg.dists.map(function(pth) {
         return new Promise(function(resolve, reject) {
             var dirPath = path.dirname(pth);
-            fs.stat(dirPath, function (err, stat) {
+            fs.stat(dirPath, function(err, stat) {
                 if (err && err.code === 'ENOENT') {
                     makeDir()
                 } else {
@@ -124,7 +124,7 @@ function createDistDirs(cfg) {
                 }
 
                 function makeDir() {
-                    fs.mkdir(dirPath, function (err) {
+                    fs.mkdir(dirPath, function(err) {
                         err ? reject() : resolve();
                     })
                 }
@@ -133,14 +133,32 @@ function createDistDirs(cfg) {
     }));
 }
 
+function dropCommonPath(pathA, pathB) {
+    while (pathA.charAt(0) === pathB.charAt(0)) {
+        pathA = pathA.slice(1);
+        pathB = pathB.slice(1);
+    }
+    return pathA;
+}
+
+function getLibDistPath(filePath, cwd) {
+    debugger;
+    if (filePath.indexOf(cwd) === -1) {
+        // library is outside of project directoy (possible symlink)
+        return dropCommonPath(filePath, cwd);
+    } else {
+        return path.relative(cwd, filePath);
+    }
+}
+
 // options.entries - browserify files
 module.exports = function(gulp, options) {
     var cfg = parseConfig(options);
 
     gulp.task('watchjs', function() {
-        return createDistDirs(cfg).then(function () {
+        return createDistDirs(cfg).then(function() {
             browserifyWatch(options);
-        }, function () {
+        }, function() {
             gutil.log('error creating dist dirs');
         })
     });
@@ -156,7 +174,6 @@ module.exports = function(gulp, options) {
                         resolve();
                         return;
                     }
-                    debugger;
                     var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpFileAssets({
@@ -165,14 +182,11 @@ module.exports = function(gulp, options) {
                                     css: ['css'],
                                     page: ['html', 'tpl'],
                                     img: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'],
-                                    fonts: ['eot', 'woff', 'ttf']
+                                    fonts: ['eot', 'woff', 'woff2', 'ttf']
                                 }
                             }))
                             .pipe(gulpRename(function(pth) {
-                                pth.dirname = path.relative(
-                                    cwd,
-                                    path.join(path.dirname(cssFilePath), pth.dirname)
-                                );
+                                 pth.dirname = getLibDistPath(path.join(path.dirname(cssFilePath), pth.dirname), cwd)
                             }))
                             .pipe(gulp.dest(path.dirname(distFullPath)));
                     });
@@ -181,10 +195,7 @@ module.exports = function(gulp, options) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1,
                                 offset, str) {
-                                var pth = path.relative(
-                                    cwd,
-                                    path.join(path.dirname(cssFilePath), p1)
-                                );
+                                var pth = getLibDistPath(path.join(path.dirname(cssFilePath), p1), cwd);
                                 return 'url(\'' + pth.replace(/\\/ig, '/') + '\')';
                             }))
                     });
@@ -209,10 +220,10 @@ module.exports = function(gulp, options) {
         });
     });
 
-    gulp.task('cleandist', [], function () {
-        return Promise.all(cfg.dists.map(function (distPath) {
-            return new Promise(function (resolve, reject) {
-                rimraf(path.dirname(distPath), function (err) {
+    gulp.task('cleandist', [], function() {
+        return Promise.all(cfg.dists.map(function(distPath) {
+            return new Promise(function(resolve, reject) {
+                rimraf(path.dirname(distPath), function(err) {
                     if (err) {
                         reject();
                     } else {
