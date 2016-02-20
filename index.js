@@ -6,6 +6,7 @@ var browserify = require('browserify');
 var parcelMap = require('parcel-map');
 var exorcist = require('exorcist');
 var watchify = require('watchify');
+var rimraf = require('rimraf');
 var gutil = require('gulp-util');
 var path = require('path');
 var es = require('event-stream');
@@ -154,7 +155,7 @@ module.exports = function(gulp, options) {
                         resolve();
                         return;
                     }
-                        debugger;
+                    debugger;
                     var urlsStreams = cssFilesPaths.map(function(cssFilePath) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpFileAssets({
@@ -205,6 +206,20 @@ module.exports = function(gulp, options) {
             gulp.watch(cssFilesPaths, ['css']);
             cb();
         });
+    });
+
+    gulp.task('cleandist', [], function () {
+        return Promise.all(cfg.dists.map(function (distPath) {
+            return new Promise(function (resolve, reject) {
+                rimraf(path.dirname(distPath), function (err) {
+                    if (err) {
+                        reject();
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        }));
     });
 
     gulp.task('default', ['watchjs', 'watchcss']);
