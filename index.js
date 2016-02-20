@@ -21,6 +21,8 @@ var gulp = require('gulp');
 
 var dedupePlugin = require('./dedupePlugin.js');
 
+var cwd = process.cwd();
+
 function parseConfig(config) {
     var srcs = [];
     var dists = [];
@@ -36,7 +38,6 @@ function parseConfig(config) {
     });
 
     return {
-        cwd: config.cwd,
         srcs: srcs,
         dists: dists,
         commonBundle: commonBundle,
@@ -147,8 +148,8 @@ module.exports = function(gulp, options) {
     gulp.task('css', function(cb) {
         return Promise.all(cfg.srcs.map(function(src, i) {
             return new Promise(function(resolve, reject) {
-                var srcFullPath = path.join(cfg.cwd, cfg.srcs[i]);
-                var distFullPath = path.join(cfg.cwd, cfg.dists[i]);
+                var srcFullPath = path.join(cwd, cfg.srcs[i]);
+                var distFullPath = path.join(cwd, cfg.dists[i]);
 
                 getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
                     if (_.isEmpty(cssFilesPaths)) {
@@ -169,7 +170,7 @@ module.exports = function(gulp, options) {
                             }))
                             .pipe(gulpRename(function(pth) {
                                 pth.dirname = path.relative(
-                                    options.cwd,
+                                    cwd,
                                     path.join(path.dirname(cssFilePath), pth.dirname)
                                 );
                             }))
@@ -181,7 +182,7 @@ module.exports = function(gulp, options) {
                             .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1,
                                 offset, str) {
                                 var pth = path.relative(
-                                    options.cwd,
+                                    cwd,
                                     path.join(path.dirname(cssFilePath), p1)
                                 );
                                 return 'url(\'' + pth.replace(/\\/ig, '/') + '\')';
