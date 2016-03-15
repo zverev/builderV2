@@ -54,9 +54,8 @@ function browserifyFactory(config) {
     });
 }
 
-function browserifyWatch(config) {
+function browserifyBundle(br, config) {
     var cfg = parseConfig(config);
-    var br = watchify(browserifyFactory(config));
 
     br.plugin(dedupePlugin, {
         foo: 'bar'
@@ -99,6 +98,14 @@ function browserifyWatch(config) {
             .pipe(vinylSourceStream(path.basename(cfg.dists[0])))
             .pipe(gulp.dest(path.dirname(cfg.dists[0])));
     }
+}
+
+function browserifyCompile(config) {
+    return browserifyBundle(browserifyFactory(config), config);
+}
+
+function browserifyWatch(config) {
+    return browserifyBundle(watchify(browserifyFactory(config)), config);
 }
 
 function getCssAssets(brInstance, cb) {
@@ -174,6 +181,14 @@ function getLibDistPath(filePath, cwd) {
 module.exports = function(gulp, options) {
     var cfg = parseConfig(options);
 
+    gulp.task('compilejs', function () {
+        return createDistDirs(cfg).then(function() {
+            browserifyCompile(options);
+        }, function() {
+            gutil.log('error creating dist dirs');
+        })
+    });
+
     gulp.task('watchjs', function() {
         return createDistDirs(cfg).then(function() {
             browserifyWatch(options);
@@ -182,7 +197,7 @@ module.exports = function(gulp, options) {
         })
     });
 
-    gulp.task('css', function(cb) {
+    gulp.task('compilecss', function(cb) {
         return Promise.all(cfg.srcs.map(function(src, i) {
             return new Promise(function(resolve, reject) {
                 var srcFullPath = path.join(cwd, cfg.srcs[i]);
@@ -234,7 +249,7 @@ module.exports = function(gulp, options) {
         }));
     });
 
-    gulp.task('watchcss', ['css'], function(cb) {
+    gulp.task('watchcss', ['compilecss'], function(cb) {
         getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
             gulp.watch(cssFilesPaths, ['css']);
             cb();
@@ -255,5 +270,7 @@ module.exports = function(gulp, options) {
         }));
     });
 
-    gulp.task('default', ['watchjs', 'watchcss']);
+    gulp.task('watch', ['watchjs', 'watchcss']);
+    gulp.task('compile', ['compilejs', 'compilecss']);
+    gulp.task('default', ['compile']);
 }
