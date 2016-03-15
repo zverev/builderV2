@@ -58,22 +58,27 @@ function browserifyWatch(config) {
     var cfg = parseConfig(config);
     var br = watchify(browserifyFactory(config));
 
-    br.plugin(factorBundle, {
-        outputs: cfg.dists
-    });
-
     br.plugin(dedupePlugin, {
         foo: 'bar'
     });
 
-    br.on('update', bundle); // on any dep update, runs the bundler
     br.on('log', gutil.log); // output build logs to terminal
 
-    bundle();
+    if (cfg.dists.length > 1) {
+        br.plugin(factorBundle, {
+            outputs: cfg.dists
+        });
+
+        br.on('update', bundleMultiple);
+        bundleMultiple();
+    } else {
+        br.on('update', bundleSingle);
+        bundleSingle();
+    }
 
     return br;
 
-    function bundle() {
+    function bundleMultiple() {
         return br.bundle()
             .on('error', function(error) {
                 debugger;
@@ -82,6 +87,17 @@ function browserifyWatch(config) {
             .pipe(exorcist(cfg.commonBundle + '.map'))
             .pipe(vinylSourceStream(path.basename(cfg.commonBundle)))
             .pipe(gulp.dest(path.dirname(cfg.commonBundle)));
+    }
+
+    function bundleSingle() {
+        return br.bundle()
+            .on('error', function(error) {
+                debugger;
+                gutil.log('error', error.text)
+            })
+            .pipe(exorcist(cfg.dists[0] + '.map'))
+            .pipe(vinylSourceStream(path.basename(cfg.dists[0])))
+            .pipe(gulp.dest(path.dirname(cfg.dists[0])));
     }
 }
 
@@ -189,7 +205,8 @@ module.exports = function(gulp, options) {
                                 }
                             }))
                             .pipe(gulpRename(function(pth) {
-                                 pth.dirname = getLibDistPath(path.join(path.dirname(cssFilePath), pth.dirname), cwd)
+                                pth.dirname = getLibDistPath(path.join(path.dirname(
+                                    cssFilePath), pth.dirname), cwd)
                             }))
                             .pipe(gulp.dest(path.dirname(distFullPath)));
                     });
@@ -198,7 +215,8 @@ module.exports = function(gulp, options) {
                         return gulp.src(cssFilePath)
                             .pipe(gulpReplace(/url\(['"]*([^\'\"\)]*)['"]*\)/ig, function(match, p1,
                                 offset, str) {
-                                var pth = getLibDistPath(path.join(path.dirname(cssFilePath), p1), cwd);
+                                var pth = getLibDistPath(path.join(path.dirname(cssFilePath),
+                                    p1), cwd);
                                 return 'url(\'' + pth.replace(/\\/ig, '/') + '\')';
                             }))
                     });
