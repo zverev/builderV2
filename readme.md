@@ -1,20 +1,24 @@
 # Builder V2
 
-### Multiple bundles application
+## Configuration API
 
-Suppose we have an application with a separate help page. Sometimes this application operates with heavy data, but most time we don't need it, so we want to load it dynamically.
+Gmx Builder exposes a function that acceps two arguments: a gulp instance and config object.
 
-In this case configuration file may look like this:
+The only key, that config object contains is a hash of bundles, that we want to create. Every key of this hash is a bundle dist file, corresponding value is an entry file.
+
+**example:**
 
 ```javascript
-{
-    cwd: __dirname,
+// gulpfile.js
+require('gmx-builder')(require('gulp'), {
     bundles: {
-        'dist/common.js': '__common_bundle',
-        'dist/app.js': 'src/app/index.js',
-        'dist/help.js': 'src/help/index.js'
+        'dist/bundle.js': 'index.js'
     }
-}
+})
 ```
 
-Each key in bundles hash represents a separate output bundle, value is the source file. Key with special value `__common_bundle` corresponds bundle containing common libraries.
+## Tasks
+
+- `gulp compile` - compile project
+- `gulp watch` - compile project and watch
+- `gulp cleandist` - clean all produced dist files
