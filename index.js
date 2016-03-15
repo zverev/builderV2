@@ -123,9 +123,13 @@ function createDistDirs(cfg) {
                     }
                 }
 
-                function makeDir() {
+                function makeDir(dir) {
                     fs.mkdir(dirPath, function(err) {
-                        err ? reject() : resolve();
+                        if (err) {
+                            err.code === 'EEXIST' ? resolve() : reject();
+                        } else {
+                            resolve();
+                        }
                     })
                 }
             })
@@ -142,7 +146,6 @@ function dropCommonPath(pathA, pathB) {
 }
 
 function getLibDistPath(filePath, cwd) {
-    debugger;
     if (filePath.indexOf(cwd) === -1) {
         // library is outside of project directoy (possible symlink)
         return dropCommonPath(filePath, cwd);
