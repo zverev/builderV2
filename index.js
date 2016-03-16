@@ -49,7 +49,9 @@ function browserifyFactory(config) {
     var cfg = parseConfig(config);
 
     return browserify({
-        entries: cfg.srcs,
+        entries: cfg.srcs.map(function (pth) {
+            return path.join(process.cwd(), pth);
+        }),
         debug: cfg.debug
     });
 }
@@ -68,35 +70,35 @@ function browserifyBundle(br, config) {
             outputs: cfg.dists
         });
 
-        br.on('update', bundleMultiple);
-        bundleMultiple();
+        br.on('update', bundle.bind(null, cfg.commonBundle));
+        bundle(cfg.commonBundle);
     } else {
-        br.on('update', bundleSingle);
-        bundleSingle();
+        br.on('update', bundle.bind(null, cfg.dists[0]));
+        bundle(cfg.dists[0]);
     }
 
     return br;
 
-    function bundleMultiple() {
-        return br.bundle()
+    function bundle(distFile) {
+        debugger;
+        var bundleStream = br.bundle()
             .on('error', function(error) {
                 debugger;
                 gutil.log('error', error.text)
-            })
-            .pipe(exorcist(cfg.commonBundle + '.map'))
-            .pipe(vinylSourceStream(path.basename(cfg.commonBundle)))
-            .pipe(gulp.dest(path.dirname(cfg.commonBundle)));
-    }
+            });
 
-    function bundleSingle() {
-        return br.bundle()
-            .on('error', function(error) {
-                debugger;
-                gutil.log('error', error.text)
-            })
-            .pipe(exorcist(cfg.dists[0] + '.map'))
-            .pipe(vinylSourceStream(path.basename(cfg.dists[0])))
-            .pipe(gulp.dest(path.dirname(cfg.dists[0])));
+        var pipeline = [
+            vinylSourceStream(path.basename(distFile)),
+            gulp.dest(path.dirname(distFile))
+        ];
+
+        if (cfg.debug) {
+            pipeline.unshift(exorcist(path.join(process.cwd(), distFile + '.map')));
+        }
+
+        return pipeline.reduce(function (prev, next) {
+            return prev.pipe(next);
+        }, bundleStream)
     }
 }
 
