@@ -253,7 +253,7 @@ module.exports = function(gulp, options) {
 
     gulp.task('watchcss', ['compilecss'], function(cb) {
         getCssAssets(browserifyFactory(options), function(cssFilesPaths) {
-            gulp.watch(cssFilesPaths, ['css']);
+            gulp.watch(cssFilesPaths, ['compilecss']);
             cb();
         });
     });
