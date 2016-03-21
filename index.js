@@ -1,7 +1,7 @@
 'use strict';
 
 var vinylSourceStream = require('vinyl-source-stream');
-var factorBundle = require('factor-bundle')
+var factorBundle = require('factor-bundle');
 var browserify = require('browserify');
 var parcelMap = require('parcel-map');
 var exorcist = require('exorcist');
@@ -20,6 +20,8 @@ var gulpConcat = require('gulp-concat');
 var gulp = require('gulp');
 
 var dedupePlugin = require('./dedupePlugin.js');
+var nativeDedupePatch = require('./nativeDedupePatch.js');
+var browserifyResolutionsPlugin = require('browserify-resolutions');
 
 var cwd = process.cwd();
 
@@ -62,6 +64,8 @@ function browserifyBundle(br, config) {
     br.plugin(dedupePlugin, {
         foo: 'bar'
     });
+
+    br.plugin(nativeDedupePatch, {});
 
     br.on('log', gutil.log); // output build logs to terminal
 
