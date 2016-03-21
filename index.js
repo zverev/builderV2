@@ -127,7 +127,7 @@ function getCssAssets(brInstance, cb) {
                 cssFilesPaths.push(path.normalize(assetPath));
             }
         }
-        cb(cssFilesPaths);
+        cb(cssFilesPaths.reverse());
     });
 
     brInstance.bundle();
