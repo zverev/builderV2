@@ -21,7 +21,6 @@ var gulp = require('gulp');
 
 var dedupePlugin = require('./dedupePlugin.js');
 var nativeDedupePatch = require('./nativeDedupePatch.js');
-var browserifyResolutionsPlugin = require('browserify-resolutions');
 
 var cwd = process.cwd();
 
