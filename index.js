@@ -61,9 +61,9 @@ function browserifyFactory(config) {
 function browserifyBundle(br, config) {
     var cfg = parseConfig(config);
 
-    br.plugin(dedupePlugin, {
-        foo: 'bar'
-    });
+    // br.plugin(dedupePlugin, {
+    //     foo: 'bar'
+    // });
 
     br.plugin(nativeDedupePatch, {});
 
